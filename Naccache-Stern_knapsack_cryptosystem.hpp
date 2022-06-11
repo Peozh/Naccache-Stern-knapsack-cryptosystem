@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <vector>
 #include <random>
@@ -11,8 +12,7 @@
     https://en.wikipedia.org/wiki/Pohlig%E2%80%93Hellman_algorithm
     https://mathphysics.tistory.com/1148
 */
-
-// N : unit length, bit count of unit data.
+// N : unit length, bit count of unit data. (fixed 8)
 template <std::size_t N = 8ULL>
 class KnapsackCryptosystem {
 public:
@@ -90,6 +90,7 @@ public:
                 R_i = { 0 ~ factor_i-1 }, r_i ∈ R_i
                 s = r_i (mod factor_i)
             */
+            std::cout << "lhs = " << lhs << std::endl;
             for (std::uint64_t r_i = 0; r_i < factors[i]; ++r_i) {
                 std::uint64_t rhs = modular_exponentiation(b, (r_i*exponent_i), largePrime_p);
                 if (lhs == rhs) {
@@ -132,7 +133,7 @@ public:
            deduced_s += sigma_i;
            deduced_s %= largePrime_p-1;
         }
-        // s = deduced_s (mod p-1)
+        
         return deduced_s;
     }
 
@@ -158,17 +159,13 @@ private:
 
     // p > p_0 * ... * p_(N-1)
     void setLargePrime() {
-        primes = { 2,  3,  5,  7, 11, 13, 17, 19, // 9,699,690
-                  23, 29, 31, 37, 41, 43, 47}; // 614,889,782,588,491,410
-        largePrime_p = 9700247ULL; // max 18,446,744,073,709,551,616(2^64) - 59 with uint64_t
-        largePrime_p = 18'446'744'073'709'551'557ULL; 
-        // 18,446,744,073,709,551,616 : 2^64 (uint64_t)
+        primes = { 2,  3,  5,  7, 11, 13, 17, 19 }; // mult = 9,699,690
         //  9 223 372 036 854 775 808 : 2^63 (int64_t)
-        //  9 223 372 035 854 775 787 : biggest prime in 2^63 (int64_t)
         //              3 037 000 499 : sqrt(2^63) (int64_t)
         //              3 037 000 493 : biggest prime in sqrt(2^63) (int64_t)
 
-        uint64_t primeUpperbound = sqrtl(9'223'372'035'854'775'808ULL);
+        // constraints : primeUpperbound > largePrime_p > mult
+        uint64_t primeUpperbound = sqrtl(1LL << 63);
         std::size_t maximumPrimeGap = sqrtl(primeUpperbound); // Oppermann's conjecture : (n^2-n, n^2)
         std::cout << "maximum prime gap = " << maximumPrimeGap << std::endl;
         for (std::size_t idx = 0; idx < maximumPrimeGap; idx += 2) { // density ~= 1/log(n) = 4.58%
@@ -186,7 +183,6 @@ private:
         it guarantees existance of MMI (s^-1 modulo p-1)
     */
     void setSecretKey() {
-        //secretKey_s = 5642069;
         std::random_device seed;
         std::mt19937_64 randomEngine(seed());
         std::uniform_int_distribution<uint64_t> distribution(2ULL, largePrime_p-2);
@@ -210,7 +206,6 @@ private:
 
     // Set public keys v_i (= encrypted p_i) as coprime with p
     void setCoprimes() {
-        //coprimes_vis = {8567078, 5509479, 2006538, 4340987, 8643477, 6404090, 1424105, 7671241};
         coprimes_vis.resize(N);
         for (std::size_t idx = 0; idx < coprimes_vis.size(); ++idx) {
             coprimes_vis[idx] = s_th_root_modulo_p(primes[idx]);
@@ -223,7 +218,7 @@ private:
         v_i = p_i ^ (s^-1) mod p
         (Fermat's little Theorem, FlT) applied... guaranteed by (p is prime)
         v_i = p_i ^ (s^-1 mod p-1) mod p
-        (Modular Multiplicative Inverse, MMI) applied... guaranteed by (gcd(s, p-1) = 1)
+        (Modular Multiplicative Inverse, MMI) applied... guaranteed by (gcd(s, p-1) = 1) : element's minimum gap = gcd(s, p-1)
         v_i = p_i ^ (MMI(p-1, s)) mod p
     */
     uint64_t s_th_root_modulo_p(uint64_t p_i) {
